@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { ExpenseRecord } from '../types';
+import { ExpenseRecord, Payment, Employee } from '../types';
 import Card from '../components/Card';
 import Modal from '../components/Modal';
 
@@ -37,7 +38,51 @@ const EditExpenseForm: React.FC<{
             </div>
         </form>
     );
-}
+};
+
+const PaymentForm: React.FC<{
+    employees: Employee[];
+    onSave: (payment: Omit<Payment, 'id'>) => void;
+    onCancel: () => void;
+}> = ({ employees, onSave, onCancel }) => {
+    const [employeeId, setEmployeeId] = useState<string>(employees[0]?.id || '');
+    const [amount, setAmount] = useState('');
+    const [date, setDate] = useState(new Date().toLocaleDateString('fa-IR-u-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit' }));
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (employeeId && amount && Number(amount) > 0) {
+            onSave({
+                employeeId,
+                amount: Number(amount),
+                date,
+            });
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="employee" className="block text-sm font-medium text-gray-300 mb-1">کارمند</label>
+                <select id="employee" value={employeeId} onChange={e => setEmployeeId(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-[var(--primary-500)] focus:border-[var(--primary-500)] transition-colors">
+                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                </select>
+            </div>
+            <div>
+                <label htmlFor="payment-amount" className="block text-sm font-medium text-gray-300 mb-1">مبلغ دریافتی (تومان)</label>
+                <input id="payment-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-[var(--primary-500)] focus:border-[var(--primary-500)] transition-colors" required />
+            </div>
+            <div>
+                <label htmlFor="payment-date" className="block text-sm font-medium text-gray-300 mb-1">تاریخ</label>
+                <input id="payment-date" type="text" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-[var(--primary-500)] focus:border-[var(--primary-500)] transition-colors" />
+            </div>
+            <div className="flex justify-end space-x-2 space-x-reverse">
+                <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-500">لغو</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-bold">ذخیره</button>
+            </div>
+        </form>
+    );
+};
 
 
 const DetailsView: React.FC = () => {
@@ -45,6 +90,7 @@ const DetailsView: React.FC = () => {
     const [filterEmployeeId, setFilterEmployeeId] = useState<string>('');
     const [editingExpense, setEditingExpense] = useState<ExpenseRecord | null>(null);
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
 
     const filteredExpenses = useMemo(() => {
@@ -57,7 +103,7 @@ const DetailsView: React.FC = () => {
         const balances: { [key: string]: { id: string, name: string, total: number } } = {};
         
         state.employees.forEach(emp => {
-            balances[emp.id] = { id: emp.id, name: emp.name, total: 0 };
+            balances[emp.id] = { id: emp.id, name: emp.name, total: emp.initialDebt || 0 };
         });
 
         state.expenses
@@ -67,11 +113,19 @@ const DetailsView: React.FC = () => {
                     balances[ex.employeeId].total += ex.amount;
                 }
             });
+        
+        state.payments
+            .filter(p => !filterEmployeeId || p.employeeId === filterEmployeeId)
+            .forEach(p => {
+                if(balances[p.employeeId]) {
+                    balances[p.employeeId].total -= p.amount;
+                }
+            });
             
         return Object.values(balances)
-            .filter(b => b.total !== 0)
+            .filter(b => Math.round(b.total) !== 0)
             .sort((a, b) => b.total - a.total);
-    }, [state.expenses, state.employees, filterEmployeeId]);
+    }, [state.expenses, state.employees, state.payments, filterEmployeeId]);
 
      const groupedExpenses = useMemo(() => {
         const groups: { [transactionId: string]: ExpenseRecord[] } = {};
@@ -102,6 +156,11 @@ const DetailsView: React.FC = () => {
         dispatch({type: 'UPDATE_EXPENSE', payload: expense });
         setEditingExpense(null);
     }
+
+    const handleSavePayment = (paymentData: Omit<Payment, 'id'>) => {
+        dispatch({ type: 'ADD_PAYMENT', payload: { id: `payment-${Date.now()}`, ...paymentData } });
+        setIsPaymentModalOpen(false);
+    };
 
     const handleShare = async (groupToShare?: ExpenseRecord[]) => {
         let textToShare: string;
@@ -174,7 +233,8 @@ const DetailsView: React.FC = () => {
                     <option value="">همه کارمندان</option>
                     {state.employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
                 </select>
-                <button onClick={() => handleShare()} className="p-2 rounded-lg bg-blue-500 text-white shrink-0">اشتراک کل</button>
+                <button onClick={() => setIsPaymentModalOpen(true)} className="p-2 rounded-lg bg-green-600 hover:bg-green-500 text-white shrink-0">ثبت پرداختی</button>
+                <button onClick={() => handleShare()} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white shrink-0">اشتراک کل</button>
             </div>
 
             {employeeBalances.length > 0 && (
@@ -255,6 +315,9 @@ const DetailsView: React.FC = () => {
             
             <Modal isOpen={!!editingExpense} onClose={() => setEditingExpense(null)} title="ویرایش رکورد هزینه">
                 {editingExpense && <EditExpenseForm expense={editingExpense} onSave={handleSaveEdit} onCancel={() => setEditingExpense(null)} />}
+            </Modal>
+            <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="ثبت مبلغ دریافتی">
+                <PaymentForm employees={state.employees} onSave={handleSavePayment} onCancel={() => setIsPaymentModalOpen(false)} />
             </Modal>
         </div>
     );

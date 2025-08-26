@@ -13,11 +13,13 @@ const EmployeeForm: React.FC<{
 }> = ({ employee, onSave, onCancel }) => {
     const [name, setName] = useState(employee?.name || '');
     const [phone, setPhone] = useState(employee?.phone || '');
+    const [initialDebt, setInitialDebt] = useState(employee?.initialDebt?.toString() || '0');
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (name && phone) {
-            onSave({ name, phone });
+            onSave({ name, phone, initialDebt: Number(initialDebt) || 0 });
         }
     };
     
@@ -76,6 +78,17 @@ const EmployeeForm: React.FC<{
                     required
                 />
             </div>
+            <div>
+                <label htmlFor="initialDebt" className="block text-sm font-medium text-gray-300 mb-1">بدهی از قبل (تومان)</label>
+                <input
+                    type="number"
+                    id="initialDebt"
+                    value={initialDebt}
+                    onChange={(e) => setInitialDebt(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-[var(--primary-500)] focus:border-[var(--primary-500)] transition-colors"
+                    placeholder="0"
+                />
+            </div>
             <div className="flex justify-end space-x-2 space-x-reverse">
                 <button type="button" onClick={onCancel} className="px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors">لغو</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-[--primary-600] hover:bg-[--primary-500] text-white font-bold transition-colors">ذخیره</button>
@@ -103,7 +116,7 @@ const EmployeesView: React.FC = () => {
         if (editingEmployee) {
             dispatch({ type: 'UPDATE_EMPLOYEE', payload: { ...editingEmployee, ...employeeData } });
         } else {
-            dispatch({ type: 'ADD_EMPLOYEE', payload: { id: Date.now().toString(), ...employeeData } });
+            dispatch({ type: 'ADD_EMPLOYEE', payload: { id: Date.now().toString(), ...employeeData } as Employee });
         }
         handleCloseModal();
     };

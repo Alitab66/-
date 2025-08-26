@@ -1,6 +1,6 @@
 
 import React, { createContext, useReducer, useEffect, useContext } from 'react';
-import { AppState, AppAction } from '../types';
+import { AppState, AppAction, Payment } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const initialState: AppState = {
@@ -8,6 +8,7 @@ const initialState: AppState = {
   employees: [],
   items: [],
   expenses: [],
+  payments: [],
   theme: 'default',
 };
 
@@ -25,9 +26,11 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_THEME':
       return { ...state, theme: action.payload };
     case 'ADD_EMPLOYEE':
-      return { ...state, employees: [...state.employees, action.payload] };
+      const newEmployee = { ...action.payload, initialDebt: action.payload.initialDebt || 0 };
+      return { ...state, employees: [...state.employees, newEmployee] };
     case 'UPDATE_EMPLOYEE':
-      return { ...state, employees: state.employees.map(e => e.id === action.payload.id ? action.payload : e) };
+      const updatedEmployee = { ...action.payload, initialDebt: action.payload.initialDebt || 0 };
+      return { ...state, employees: state.employees.map(e => e.id === action.payload.id ? updatedEmployee : e) };
     case 'DELETE_EMPLOYEE':
       return { ...state, employees: state.employees.filter(e => e.id !== action.payload) };
     case 'ADD_ITEM':
@@ -44,6 +47,10 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         return { ...state, expenses: state.expenses.filter(ex => ex.transactionId !== action.payload) };
     case 'TOGGLE_SETTLE_EXPENSE':
         return { ...state, expenses: state.expenses.map(ex => ex.id === action.payload ? {...ex, isSettled: !ex.isSettled} : ex) };
+    case 'ADD_PAYMENT':
+        return { ...state, payments: [...state.payments, action.payload] };
+    case 'DELETE_PAYMENT':
+        return { ...state, payments: state.payments.filter(p => p.id !== action.payload) };
     default:
       return state;
   }

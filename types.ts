@@ -3,12 +3,20 @@ export interface Employee {
   id: string;
   name: string;
   phone: string;
+  initialDebt: number;
 }
 
 export interface Item {
   id: string;
   name: string;
   price: number;
+}
+
+export interface Payment {
+  id: string;
+  employeeId: string;
+  amount: number;
+  date: string;
 }
 
 export interface ExpenseRecord {
@@ -27,6 +35,7 @@ export interface AppState {
   employees: Employee[];
   items: Item[];
   expenses: ExpenseRecord[];
+  payments: Payment[];
   theme: string;
 }
 
@@ -42,6 +51,8 @@ export type AppAction =
   | { type: 'UPDATE_EXPENSE'; payload: ExpenseRecord }
   | { type: 'DELETE_EXPENSE_GROUP'; payload: string }
   | { type: 'TOGGLE_SETTLE_EXPENSE'; payload: string }
+  | { type: 'ADD_PAYMENT'; payload: Payment }
+  | { type: 'DELETE_PAYMENT'; payload: string }
   | { type: 'SET_THEME'; payload: string }
   | { type: 'SET_STATE'; payload: AppState };
 
